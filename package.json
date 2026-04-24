@@ -17,6 +17,8 @@
     "vitest": "^4.1.4"
   },
   "dependencies": {
-    "dotenv": "^17.4.2"
+    "dotenv": "^17.4.2",
+    "undici": "^8.1.0",
+    "undici-types": "^8.1.0"
   }
 }
