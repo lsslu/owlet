@@ -19,15 +19,21 @@ export async function runAgent(userMessage: string, tools: Tool[]) {
 
     for (const call of reply.tool_calls) {
       const tool = toolMap.get(call.function.name);
-      const args = JSON.parse(call.function.arguments);
-
-      console.log(`\n[agent] 调用 ${call.function.name}(${JSON.stringify(args)})`);
-
       let result: string;
+
       if (!tool) {
         result = `错误：未知工具 ${call.function.name}`;
       } else {
-        result = String(await tool.execute(args));
+        let args: any;
+        try {
+          args = JSON.parse(call.function.arguments);
+        } catch (e: any) {
+          result = `错误：工具参数解析失败 - ${e.message}`;
+          messages.push({ role: 'tool', tool_call_id: call.id, content: result });
+          continue;
+        }
+        const r = await tool.execute(args);
+        result = r.ok ? r.value : `错误：${r.error}`;
       }
 
       console.log(`[agent] 结果: ${result.slice(0, 100)}${result.length > 100 ? '...' : ''}`);

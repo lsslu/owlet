@@ -1,10 +1,11 @@
 import { config } from "./config";
+import type { Result } from "./result";
 
 export interface Tool {
   name: string;
   description: string;
   parameters: object;
-  execute: (args: any) => Promise<string> | string;
+  execute: (args: any) => Promise<Result<string>>;
 }
 
 function toOpenAITools(tools: Tool[]) {
