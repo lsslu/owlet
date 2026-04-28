@@ -1,15 +1,26 @@
 import { promises as fs } from 'node:fs';
-import { resolve, relative } from 'node:path';
+import { resolve, relative, isAbsolute } from 'node:path';
 import { ok, err } from '../shared/result';
 import type { Tool } from '../shared/llm';
 
 const SANDBOX = resolve(process.cwd(), 'sandbox');
 
 function safePath(userPath: string): string {
-  const full = resolve(SANDBOX, userPath);
+  let normalized = userPath;
+
+  // 绝对路径：若落在 sandbox 内，剥成相对形式；否则保留，让后面的越界检查拒绝
+  if (isAbsolute(normalized)) {
+    const rel = relative(SANDBOX, normalized);
+    if (!rel.startsWith('..')) normalized = rel;
+  }
+
+  // 剥掉冗余的前导 sandbox/ 或 ./sandbox/（LLM 经常自作主张加）
+  normalized = normalized.replace(/^(\.\/)?sandbox(\/|$)/, '');
+
+  const full = resolve(SANDBOX, normalized);
   const rel = relative(SANDBOX, full);
-  if (rel.startsWith('..') || rel.startsWith('/')) {
-    throw new Error('拒绝访问沙盒外的路径: ${userPath}');
+  if (rel.startsWith('..') || isAbsolute(rel)) {
+    throw new Error(`拒绝访问沙盒外的路径: ${userPath}`);
   }
   return full;
 }
@@ -30,7 +41,7 @@ export const readFile: Tool = {
   execute: async ({ path }) => {
     const safe = safePath(path);
     if (!safe) {
-      return err('拒绝访问沙盒外的路径: ${path}');
+      return err(`拒绝访问沙盒外的路径: ${path}`);
     }
     try {
       const content = await fs.readFile(safe, 'utf-8');
@@ -38,7 +49,7 @@ export const readFile: Tool = {
     } catch (e: any) {
       if (e.code === 'ENOENT') return err('文件不存在: ${path}');
       if (e.code === 'EACCES') return err('没有权限访问文件: ${path}');
-      return err('读取文件失败: ${e.message}');
+      return err(`读取文件失败: ${e.message}`);
     }
   },
 };
@@ -57,13 +68,13 @@ export const writeFile: Tool = {
   execute: async ({ path, content }) => {
     const safe = safePath(path);
     if (!safe) {
-      return err('拒绝访问沙盒外的路径: ${path}');
+      return err(`拒绝访问沙盒外的路径: ${path}`);
     }
     try {
       await fs.writeFile(safePath(path), content, 'utf-8');
-      return ok('已写入 ${path}, ${content.length} 字符');
+      return ok(`已写入 ${path}, ${content.length} 字符`);
     } catch (e: any) {
-      return err('写入文件失败: ${e.message}');
+      return err(`写入文件失败: ${e.message}`);
     }
   },
 };
@@ -80,13 +91,13 @@ export const listDir: Tool = {
   execute: async ({ path = '.' }) => {
     const safe = safePath(path);
     if (!safe) {
-      return err('拒绝访问沙盒外的路径: ${path}');
+      return err(`拒绝访问沙盒外的路径: ${path}`);
     }
     try {
       const items = await fs.readdir(safePath(path));
       return ok(items.join('\n') || '(空)');
     } catch (e: any) {
-      return err('列出目录失败: ${e.message}');
+      return err(`列出目录失败: ${e.message}`);
     }
   }
 };

@@ -14,6 +14,7 @@ function toOpenAITools(tools: Tool[]) {
 
 export type StreamEvent =
 | { type: 'text'; delta: string }
+| { type: 'reasoning'; delta: string }
 | { type: 'tool_call_start'; id: string; name: string }
 | { type: 'tool_call_args'; id: string, delta: string }
 | { type: 'done', finishReason: string };
@@ -38,12 +39,19 @@ export async function* callLLMStream(
     signal: signal ?? null,
   });
 
-  if (!res.ok) throw new Error(`LLM call failed: ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.text();
+    console.log('LLM 响应状态:', res.status, res.statusText);
+    console.log('LLM 错误响应体:', body);
+    console.log('LLM 请求 messages:', JSON.stringify(messages, null, 2));
+    throw new Error(`LLM call failed: ${res.status} ${body}`);
+  }
   if (!res.body) throw new Error('LLM response has no body');
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder('utf-8');
   let buffer = '';
+  const idByIndex = new Map<number, string>();
 
   while (true) {
     const { done, value } = await reader.read();
@@ -60,8 +68,12 @@ export async function* callLLMStream(
       if (payload === '[DONE]') return;
 
       const json = JSON.parse(payload);
-      const delta = json.choices[0]?.dalta;
+      const delta = json.choices[0]?.delta;
       const finishReason = json.choices[0]?.finish_reason;
+
+      if (delta?.reasoning_content) {
+        yield { type: 'reasoning', delta: delta.reasoning_content };
+      }
 
       if (delta?.content) {
         yield { type: 'text', delta: delta.content };
@@ -69,11 +81,15 @@ export async function* callLLMStream(
 
       if (delta?.tool_calls) {
         for (const tc of delta.tool_calls) {
+          if (tc.id) idByIndex.set(tc.index, tc.id);
+          const id = idByIndex.get(tc.index);
+          if (!id) continue;
+
           if (tc.function?.name) {
-            yield { type: 'tool_call_start', id: tc.id, name: tc.function.name };
+            yield { type: 'tool_call_start', id, name: tc.function.name };
           }
           if (tc.function?.arguments) {
-            yield { type: 'tool_call_args', id: tc.id, delta: tc.function.arguments };
+            yield { type: 'tool_call_args', id, delta: tc.function.arguments };
           }
         }
       }
