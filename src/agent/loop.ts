@@ -87,7 +87,7 @@ export async function runAgentStream(
       }
       
       console.log(`\n[tool] ${tc.name}(${tc.args})`);
-      const r = await runTool(tool, args, { signal });
+      const r = await runTool(tool, args, { signal: signal! });
       const content = r.ok ? r.value : `Error: ${r.error}`;
       messages.push({
         role: 'tool',
