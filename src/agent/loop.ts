@@ -1,5 +1,5 @@
 import { callLLMStream } from "./llm";
-import type { Tool } from "../shared/llm";
+import { runTool, type Tool } from "./tool";
 
 export async function runAgentStream(
   messages: any[],
@@ -87,7 +87,7 @@ export async function runAgentStream(
       }
       
       console.log(`\n[tool] ${tc.name}(${tc.args})`);
-      const r = await tool.execute(args);
+      const r = await runTool(tool, args, { signal });
       const content = r.ok ? r.value : `Error: ${r.error}`;
       messages.push({
         role: 'tool',
