@@ -1,7 +1,8 @@
 import { z } from "zod"; 
 import { execa } from "execa";
 import { defineTool, ok, err } from "../tool";
-import { defaultPolicy, askUserConfirm } from "../permission";
+import { defaultPolicy } from "../permission";
+import { confirm } from "../prompt";
 
 export const bash = defineTool({
   name: 'bash',
@@ -16,7 +17,7 @@ export const bash = defineTool({
       return err(`命令被策略拒绝: ${command}`);
     }
     if (decision === 'ask') {
-      const allowed = await askUserConfirm(`Agent 想执行: ${command}`);
+      const allowed = await confirm(`Agent 想执行: ${command}`);
       if (!allowed) {
         return err(`用户拒绝执行 ${command}`);
       }

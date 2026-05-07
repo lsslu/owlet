@@ -29,11 +29,3 @@ export const defaultPolicy: PermissionPolicy = {
     return 'ask';
   }
 }
-
-export async function askUserConfirm(prompt: string): Promise<boolean> {
-  const readline = await import('node:readline/promises');
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const answer = await rl.question(`${prompt}\n (y/N): `);
-  rl.close();
-  return answer.trim().toLowerCase() === 'y';
-}

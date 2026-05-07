@@ -1,11 +1,8 @@
-import readline from 'node:readline';
 import { runAgentStream } from './agent/loop';
 import { readFile, writeFile, listDir } from './agent/tools/fs';
 import { currentTime } from './agent/tools/current-time';
 import { bash } from './agent/tools/bash';
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-const ask = (q: string) => new Promise<string>(r => rl.question(q, r));
+import { ask, closePrompt } from './agent/prompt';
 
 const tools = [readFile, writeFile, listDir, currentTime, bash];
 
@@ -42,4 +39,4 @@ while (true) {
   }
 }
 
-rl.close();
+closePrompt();
