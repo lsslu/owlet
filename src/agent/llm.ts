@@ -8,7 +8,7 @@ function toOpenAITools(tools: Tool[]) {
     function: {
       name: t.name,
       description: t.description,
-      parameters: t.schema ? z.toJSONSchema(t.schema, { target: 'openapi-3.0' }) : { type: 'object', properties: {} },
+      parameters: t.schema ? z.toJSONSchema(t.schema, { target: 'draft-2020-12' }) : { type: 'object', properties: {} },
     }
   }));
 }

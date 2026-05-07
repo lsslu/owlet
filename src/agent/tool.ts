@@ -21,7 +21,7 @@ export function toOpenAIFormat(tools: Tool[]) {
     function: {
       name: t.name,
       description: t.description,
-      parameters: z.toJSONSchema(t.schema, { target: 'openapi-3.0' }),
+      parameters: z.toJSONSchema(t.schema, { target: 'draft-2020-12' }),
     }
   }));
 }

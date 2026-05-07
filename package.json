@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
+    "execa": "^9.6.1",
     "undici": "^8.1.0",
     "undici-types": "^8.1.0",
     "zod": "^4.4.3"
