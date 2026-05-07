@@ -1,5 +1,6 @@
 import { config } from "../shared/config";
 import type { Tool } from "./tool";
+import z from "zod";
 
 function toOpenAITools(tools: Tool[]) {
   return tools.map(t => ({
@@ -7,7 +8,7 @@ function toOpenAITools(tools: Tool[]) {
     function: {
       name: t.name,
       description: t.description,
-      parameters: t.parameters
+      parameters: t.schema ? z.toJSONSchema(t.schema, { target: 'openapi-3.0' }) : { type: 'object', properties: {} },
     }
   }));
 }

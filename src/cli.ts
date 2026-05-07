@@ -1,6 +1,7 @@
 import readline from 'node:readline';
 import { runAgentStream } from './agent/loop';
 import { readFile, writeFile, listDir } from './agent/tools/fs';
+import { currentTime } from './agent/tools/current-time';
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q: string) => new Promise<string>(r => rl.question(q, r));
@@ -26,7 +27,7 @@ while (true) {
 
   process.stdout.write('Agent> ');
   try {
-    await runAgentStream(messages, [readFile, writeFile, listDir], controller.signal);
+    await runAgentStream(messages, [readFile, writeFile, listDir, currentTime], controller.signal);
   } catch (err: any) {
     if (err.name !== 'AbortError' && err.message !== 'aborted') {
       console.error('\n[错误]', err.message);
