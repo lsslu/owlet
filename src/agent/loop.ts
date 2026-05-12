@@ -1,3 +1,4 @@
+import { ContextManager } from "./context";
 import { callLLMStream } from "./llm";
 import { runTool, type Tool } from "./tool";
 
@@ -8,12 +9,17 @@ export async function runAgentStream(
 ): Promise<string> {
   const toolMap = new Map(tools.map(t => [t.name, t]));
 
+  const ctx = new ContextManager(messages);
+
   for (let turn = 0; turn < 10; turn++) {
+    if (ctx.needsCompact()) {
+      await ctx.compact();
+    }
     let fullText = '';
     let fullReasoning = '';
     const toolCalls = new Map<string, { id: string, name: string, args: string }>();
 
-    for await (const event of callLLMStream(messages,tools, signal)) {
+    for await (const event of callLLMStream(ctx.getMessages(),tools, signal)) {
       if (event.type === 'text') {
         process.stdout.write(event.delta);
         fullText += event.delta;
@@ -50,7 +56,7 @@ export async function runAgentStream(
         }
       }));
     }
-    messages.push(assistantMsg);
+    ctx.add(assistantMsg);
 
     if (toolCalls.size === 0) {
       process.stdout.write('\n');
@@ -64,7 +70,7 @@ export async function runAgentStream(
       console.log(`\n[tool] ${tc.name}(${tc.args}), 查找工具: ${tool ? '找到' : '未找到'}`);
       if (!tool) {
         const known = Array.from(toolMap.keys()).join(',');
-        messages.push({
+        ctx.add({
           role: 'tool',
           tool_call_id: tc.id,
           content: `Error: 工具 ${tc.name} 不存在。可用工具有: ${known}`,
@@ -78,7 +84,7 @@ export async function runAgentStream(
       try {
         args = JSON.parse(tc.args);
       } catch {
-        messages.push({
+        ctx.add({
           role: 'tool',
           tool_call_id: tc.id,
           content: `Error: 工具 ${tc.name} 的参数不是有效的 JSON 字符串: ${tc.args}`,
@@ -89,7 +95,7 @@ export async function runAgentStream(
       console.log(`\n[tool] ${tc.name}(${tc.args})`);
       const r = await runTool(tool, args, { signal: signal! });
       const content = r.ok ? r.value : `Error: ${r.error}`;
-      messages.push({
+      ctx.add({
         role: 'tool',
         tool_call_id: tc.id,
         content,
