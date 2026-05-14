@@ -2,9 +2,14 @@ import { runAgentStream } from './agent/loop';
 import { readFile, writeFile, listDir } from './agent/tools/fs';
 import { currentTime } from './agent/tools/current-time';
 import { bash } from './agent/tools/bash';
+import { memorySearch, memorySave } from './agent/tools/memory';
 import { ask, closePrompt } from './agent/prompt';
 
-const tools = [readFile, writeFile, listDir, currentTime, bash];
+const tools = [
+  readFile, writeFile, listDir, 
+  currentTime, bash, 
+  memorySearch, memorySave,
+];
 
 const messages: any[] = [
   {

@@ -27,5 +27,11 @@
     "undici": "^8.1.0",
     "undici-types": "^8.1.0",
     "zod": "^4.4.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "better-sqlite3"
+    ]
   }
 }

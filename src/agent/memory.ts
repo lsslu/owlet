@@ -23,6 +23,7 @@ export class Memory {
 
   constructor(path = './memory.db') {
     this.db = new Database(path);
+    this.db.defaultSafeIntegers(true);
     sqliteVec.load(this.db);
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS memories (
@@ -40,22 +41,29 @@ export class Memory {
 
   async save(content: string): Promise<number> {
     const result = this.db.prepare('INSERT INTO memories (content) VALUES (?)').run(content);
-    const id = Number(result.lastInsertRowid);
+    // sqlite-vec 的 vec0 虚表只接受 BigInt 绑定的 rowid，绑普通 number 会报 "Only integers are allows..."
+    const rowid = BigInt(result.lastInsertRowid as number | bigint);
     const vec = await embed(content);
-    this.db.prepare('INSERT INTO memory_vec (rowid, embedding) VALUES (?, ?)').run(id, Buffer.from(vec.buffer));
-    return id;
+    this.db.prepare('INSERT INTO memory_vec (rowid, embedding) VALUES (?, ?)').run(rowid, Buffer.from(vec.buffer));
+    return Number(rowid);
   }
 
   async search(query: string, k = 3) {
     const vec = await embed(query);
-    return this.db.prepare(`
+    // LIMIT 必须直接作用在 vec0 虚表上，所以先用子查询拿 top-k，再 JOIN
+    const rows = this.db.prepare(`
       SELECT m.id, m.content, v.distance
-      FROM memory_vec v
+      FROM (
+        SELECT rowid, distance
+        FROM memory_vec
+        WHERE embedding MATCH ?
+        ORDER BY distance
+        LIMIT ?
+      ) v
       JOIN memories m ON m.id = v.rowid
-      WHERE v.embedding MATCH ?
       ORDER BY v.distance
-      LIMIT ?  
-    `).all(Buffer.from(vec.buffer), k) as Array<{ id: number; content: string; distance: number }>;
+    `).all(Buffer.from(vec.buffer), k) as Array<{ id: number | bigint; content: string; distance: number }>;
+    return rows.map(r => ({ ...r, id: Number(r.id) }));
   }
 
   close() {
