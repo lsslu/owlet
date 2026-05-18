@@ -11,7 +11,7 @@ export async function runAgentStream(
 
   const ctx = new ContextManager(messages);
 
-  for (let turn = 0; turn < 10; turn++) {
+  for (let turn = 0; turn < 50; turn++) {
     if (ctx.needsCompact()) {
       await ctx.compact();
     }
