@@ -63,46 +63,31 @@ export async function runAgentStream(
       return fullText;
     }
 
-    for (const tc of toolCalls.values()) {
+    const toolPromises = Array.from(toolCalls.values()).map(async tc => {
       if (signal?.aborted) throw new Error('操作被用户取消');
 
       const tool = toolMap.get(tc.name);
-      console.log(`\n[tool] ${tc.name}(${tc.args}), 查找工具: ${tool ? '找到' : '未找到'}`);
       if (!tool) {
         const known = Array.from(toolMap.keys()).join(',');
-        ctx.add({
-          role: 'tool',
-          tool_call_id: tc.id,
-          content: `Error: 工具 ${tc.name} 不存在。可用工具有: ${known}`,
-        });
-        continue;
+        return { id: tc.id, content: `Error: 工具 ${tc.name} 不存在。可用工具有: ${known}` };
       }
-
-      console.log(`\n[tool] 执行工具 ${tc.name}，参数: ${tc.args}`);
 
       let args: any;
       try {
         args = JSON.parse(tc.args);
       } catch {
-        ctx.add({
-          role: 'tool',
-          tool_call_id: tc.id,
-          content: `Error: 工具 ${tc.name} 的参数不是有效的 JSON 字符串: ${tc.args}`,
-        });
-        continue;
+        return { id: tc.id, content: `Error: 参数不是合法 JSON` };
       }
-      
-      console.log(`\n[tool] ${tc.name}(${tc.args})`);
-      const r = await runTool(tool, args, { signal: signal! });
-      const content = r.ok ? r.value : `Error: ${r.error}`;
-      ctx.add({
-        role: 'tool',
-        tool_call_id: tc.id,
-        content,
-      });
-    }
 
-    
+      console.log(`\n[tool] ${tc.name}(${JSON.stringify(args).slice(0, 80)})`);
+      const r = await runTool(tool, args, { signal : signal! });
+      return { id: tc.id, content: r.ok ? r.value : `Error: ${r.error}` };
+    });
+
+    const results = await Promise.all(toolPromises);
+    for (const { id, content } of results) {
+      ctx.add({ role: 'tool', tool_call_id: id, content });
+    }
   }
 
   throw new Error('达到最大轮数');
